@@ -179,7 +179,7 @@ public abstract class AbstractLife {
     /**
      * Function to run in loop for life to work
      */
-    public final void drawNext() {
+    public final void step() {
         long tStart = System.currentTimeMillis();
         processKeys();
         StdDraw.clear(Color.white);
