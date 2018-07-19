@@ -9,17 +9,17 @@ import java.util.Random;
 
 public class LifeList extends AbstractLife {
 
-    private ArrayList<CellColumn> cellList = new ArrayList<>();
-    private ArrayList<CellColumn> previousCellList = cellList;
+    private ArrayList<CellRow> cellList = new ArrayList<>();
+    private ArrayList<CellRow> previousCellList = cellList;
     private boolean unsorted = true;
-    private CellColumn currentLoadColumn = null;
+    private CellRow currentLoadColumn = null;
     
     
 
-    private class CellColumn extends ArrayList<Integer> implements Comparable<CellColumn>{
+    private class CellRow extends ArrayList<Integer> implements Comparable<CellRow>{
         private int index;
 
-        CellColumn(int index){
+        CellRow(int index){
             super();
             this.index = index;
         }
@@ -33,7 +33,7 @@ public class LifeList extends AbstractLife {
         }
 
         @Override
-        public int compareTo(CellColumn o) {
+        public int compareTo(CellRow o) {
             return Integer.compare(this.index, o.index);
         }
     }
@@ -58,52 +58,52 @@ public class LifeList extends AbstractLife {
         previousCellList = cellList;
         cellList = new ArrayList<>();
 
-        Iterator<CellColumn> curIt = previousCellList.iterator();
+        Iterator<CellRow> curIt = previousCellList.iterator();
 
         //setup
-        CellColumn lCol = null;                                        //left Column
-        CellColumn cCol = null;                                        //center Column
-        CellColumn rCol = curIt.next();                                //right Column
-        CellColumn nextCol = curIt.hasNext() ? curIt.next() : null;    //next existing column
-        int index = rCol.getIndex() - 1;                               //current index to check
+        CellRow lRow = null;                                        //left Column
+        CellRow cRow = null;                                        //center Column
+        CellRow rRow = curIt.next();                                //right Column
+        CellRow nextRow = curIt.hasNext() ? curIt.next() : null;    //next existing column
+        int index = rRow.getIndex() - 1;                               //current index to check
 
-        while (lCol != null || cCol != null || rCol != null)
+        while (lRow != null || cRow != null || rRow != null)
         {
-            CellColumn newColumn = nextColumn(index, lCol, cCol, rCol);
+            CellRow newColumn = nextColumn(index, lRow, cRow, rRow);
             if (!newColumn.isEmpty()) {
                 cellList.add(newColumn);
             }
 
             //setup next iteration
             index++;
-            lCol = cCol;
-            cCol = rCol;
+            lRow = cRow;
+            cRow = rRow;
 
-            if(nextCol != null)
+            if(nextRow != null)
             {
                 //leap through empty lines
-                if(lCol == null && cCol == null){
-                    index = nextCol.index - 1;
+                if(lRow == null && cRow == null){
+                    index = nextRow.index - 1;
                 }
 
                 //insert next line if appropriate
-                if(nextCol.index - 1 == index){
-                    rCol = nextCol;
-                    nextCol = curIt.hasNext() ? curIt.next() : null;
+                if(nextRow.index - 1 == index){
+                    rRow = nextRow;
+                    nextRow = curIt.hasNext() ? curIt.next() : null;
                 } else {
-                    rCol = null;
+                    rRow = null;
                 }
             } else {
-                rCol = null;
+                rRow = null;
             }
         }
     }
     
-    private CellColumn nextColumn(Integer col, CellColumn lCol, CellColumn cCol, CellColumn rCol){
-        CellColumn newColumn = new CellColumn(col);
-        boolean leftColumnExists = lCol != null && !lCol.isEmpty();
-        boolean centerColumnExists = cCol != null && !cCol.isEmpty();
-        boolean rightColumnExists = rCol != null && !rCol.isEmpty();
+    private CellRow nextColumn(Integer col, CellRow lRow, CellRow cRow, CellRow rCol){
+        CellRow newRow = new CellRow(col);
+        boolean leftRowExists = lRow != null && !lRow.isEmpty();
+        boolean centerRowExists = cRow != null && !cRow.isEmpty();
+        boolean rightRowExists = rCol != null && !rCol.isEmpty();
 
         Iterator<Integer> centerIt; //center column iterator
         Iterator<Integer> leftIt;   //left column iterator
@@ -128,8 +128,8 @@ public class LifeList extends AbstractLife {
         int rIndex;                  //current right index
 
         //init values
-        if (leftColumnExists){
-            leftIt = lCol.iterator();
+        if (leftRowExists){
+            leftIt = lRow.iterator();
             lf = true;
             lIndex = leftIt.next() - 1;
             nextL =  leftIt.hasNext() ? leftIt.next() : null;
@@ -137,8 +137,8 @@ public class LifeList extends AbstractLife {
             leftIt = Collections.emptyIterator();
             lIndex = Integer.MAX_VALUE;
         }
-        if (centerColumnExists){
-            centerIt = cCol.iterator();
+        if (centerRowExists){
+            centerIt = cRow.iterator();
             cf = true;
             cIndex = centerIt.next() - 1;
             nextC = centerIt.hasNext() ? centerIt.next() : null;
@@ -146,7 +146,7 @@ public class LifeList extends AbstractLife {
             centerIt = Collections.emptyIterator();
             cIndex = Integer.MAX_VALUE;
         }
-        if(rightColumnExists){
+        if(rightRowExists){
             rightIt = rCol.iterator();
             rf = true;
             rIndex = rightIt.next() - 1;
@@ -159,7 +159,7 @@ public class LifeList extends AbstractLife {
         int index = Integer.min(Integer.min(lIndex, cIndex), rIndex);
 
         //sync
-        while (leftColumnExists || rightColumnExists || centerColumnExists ) {
+        while (leftRowExists || rightRowExists || centerRowExists ) {
             int sum = 0;
             boolean leap = true;
 
@@ -198,7 +198,7 @@ public class LifeList extends AbstractLife {
                 } else {
                     leap = false;
                     if(!lc && !lb){
-                        leftColumnExists = false;
+                        leftRowExists = false;
                         lIndex = Integer.MAX_VALUE;
                     } else {
                         lf = false;
@@ -240,7 +240,7 @@ public class LifeList extends AbstractLife {
                 } else {
                     leap = false;
                     if (!cc && !cb) {
-                        centerColumnExists = false;
+                        centerRowExists = false;
                         cIndex = Integer.MAX_VALUE;
                     } else {
                         cf = false;
@@ -282,7 +282,7 @@ public class LifeList extends AbstractLife {
                 } else {
                     leap = false;
                     if (!rc && !rb) {
-                        rightColumnExists = false;
+                        rightRowExists = false;
                         rIndex = Integer.MAX_VALUE;
                     } else {
                         rf = false;
@@ -292,7 +292,7 @@ public class LifeList extends AbstractLife {
 
             //count, !!cc shifted to cb or just none like the cb!!
             if (sum == 3 || (sum == 4 && cb)) {
-                newColumn.add(index);
+                newRow.add(index);
             }
 
             //leap if needed
@@ -303,7 +303,7 @@ public class LifeList extends AbstractLife {
             }
 
         }
-        return newColumn;
+        return newRow;
     }
 
     @Override
@@ -345,7 +345,7 @@ public class LifeList extends AbstractLife {
 
 
         if(currentLoadColumn == null || currentLoadColumn.index != y){
-            currentLoadColumn = new CellColumn(y);
+            currentLoadColumn = new CellRow(y);
             cellList.add(currentLoadColumn);
         }
 
@@ -365,7 +365,7 @@ public class LifeList extends AbstractLife {
     public void randomize() {
         Random rnd = new Random();
         for (int i = offsetY; i < zHeight(); ++i) {
-            CellColumn row = new CellColumn(i);
+            CellRow row = new CellRow(i);
             for (int j = offsetX; j < zWidth(); ++j) {
                 if ((rnd.nextInt() % 12) > 8) {
                     row.add(j);
@@ -386,6 +386,6 @@ public class LifeList extends AbstractLife {
             e.sort(Integer::compareTo);
             return false;
         });
-        cellList.sort(CellColumn::compareTo);
+        cellList.sort(CellRow::compareTo);
     }
 }
