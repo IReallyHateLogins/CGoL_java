@@ -10,10 +10,9 @@ import java.util.Random;
 public class LifeList extends AbstractLife {
 
     private ArrayList<CellRow> cellList = new ArrayList<>();
-    private ArrayList<CellRow> previousCellList = cellList;
-    private boolean unsorted = true;
-    private CellRow currentLoadColumn = null;
-    
+    private ArrayList<CellRow> previousCellList = cellList;     //not local for drawing
+    private boolean unsorted = true;                            //indicates if current cell list might be unordered
+    private CellRow currentLoadRow = null;                      //stores last used row while generating field to speed up the process
     
 
     private class CellRow extends ArrayList<Integer> implements Comparable<CellRow>{
@@ -50,9 +49,11 @@ public class LifeList extends AbstractLife {
             return;
         }
 
+        //likely unnecessary, but for safety sake
         if(unsorted){
             sortLists();
             unsorted = false;
+            currentLoadRow = null; //if processing started, no need to have load buffer
         }
 
         previousCellList = cellList;
@@ -61,17 +62,19 @@ public class LifeList extends AbstractLife {
         Iterator<CellRow> curIt = previousCellList.iterator();
 
         //setup
-        CellRow lRow = null;                                        //left Column
-        CellRow cRow = null;                                        //center Column
-        CellRow rRow = curIt.next();                                //right Column
-        CellRow nextRow = curIt.hasNext() ? curIt.next() : null;    //next existing column
-        int index = rRow.getIndex() - 1;                               //current index to check
+        CellRow lRow = null;                                        //left row
+        CellRow cRow = null;                                        //center row
+        CellRow rRow = curIt.next();                                //right row
+        CellRow nextRow = curIt.hasNext() ? curIt.next() : null;    //next existing row
+        int index = rRow.getIndex() - 1;                            //current index to check
 
-        while (lRow != null || cRow != null || rRow != null)
+        //main loop, exit when all rows processed
+        while ((lRow != null) || (cRow != null) || (rRow != null))
         {
-            CellRow newColumn = nextColumn(index, lRow, cRow, rRow);
-            if (!newColumn.isEmpty()) {
-                cellList.add(newColumn);
+            //create new row, save if not empty
+            CellRow newRow = nextRow(index, lRow, cRow, rRow);
+            if (!newRow.isEmpty()) {
+                cellList.add(newRow);
             }
 
             //setup next iteration
@@ -82,12 +85,12 @@ public class LifeList extends AbstractLife {
             if(nextRow != null)
             {
                 //leap through empty lines
-                if(lRow == null && cRow == null){
+                if((lRow == null) && (cRow == null)){
                     index = nextRow.index - 1;
                 }
 
                 //insert next line if appropriate
-                if(nextRow.index - 1 == index){
+                if((nextRow.index - 1) == index){
                     rRow = nextRow;
                     nextRow = curIt.hasNext() ? curIt.next() : null;
                 } else {
@@ -99,25 +102,19 @@ public class LifeList extends AbstractLife {
         }
     }
     
-    private CellRow nextColumn(Integer col, CellRow lRow, CellRow cRow, CellRow rCol){
+    private CellRow nextRow(Integer col, CellRow lRow, CellRow cRow, CellRow rCol){
         CellRow newRow = new CellRow(col);
         boolean leftRowExists = lRow != null && !lRow.isEmpty();
         boolean centerRowExists = cRow != null && !cRow.isEmpty();
         boolean rightRowExists = rCol != null && !rCol.isEmpty();
 
-        Iterator<Integer> centerIt; //center column iterator
-        Iterator<Integer> leftIt;   //left column iterator
-        Iterator<Integer> rightIt;  //right column iterator
+        Iterator<Integer> centerIt;  //center column iterator
+        Iterator<Integer> leftIt;    //left column iterator
+        Iterator<Integer> rightIt;   //right column iterator
 
-        boolean lb = false;          //left back
-        boolean cc = false;          //left center
-        boolean cf = false;          //left front
-        boolean cb = false;          //center back
-        boolean lc = false;          //center center
-        boolean lf = false;          //center front
-        boolean rb = false;          //right back
-        boolean rc = false;          //right center
-        boolean rf = false;          //right front
+        byte leftBuffer = 0;         //buffer for left row cell state (dead or alive for current index +-1)
+        byte centerBuffer = 0;       //buffer for center row cell state
+        byte rightBuffer = 0;        //buffer for right row cell state
 
         Integer nextL = null;        //next existing left cell
         Integer nextC = null;        //next existing center cell
@@ -130,168 +127,196 @@ public class LifeList extends AbstractLife {
         //init values
         if (leftRowExists){
             leftIt = lRow.iterator();
-            lf = true;
-            lIndex = leftIt.next() - 1;
+            leftBuffer = 1; //set first bit
+            lIndex = leftIt.next() - 1; //actual index is left of first cell
             nextL =  leftIt.hasNext() ? leftIt.next() : null;
         } else {
             leftIt = Collections.emptyIterator();
-            lIndex = Integer.MAX_VALUE;
+            lIndex = Integer.MAX_VALUE; //important to work with min search
         }
         if (centerRowExists){
             centerIt = cRow.iterator();
-            cf = true;
-            cIndex = centerIt.next() - 1;
+            centerBuffer = 1; //set first bit
+            cIndex = centerIt.next() - 1; //actual index is left of first cell
             nextC = centerIt.hasNext() ? centerIt.next() : null;
         } else {
             centerIt = Collections.emptyIterator();
-            cIndex = Integer.MAX_VALUE;
+            cIndex = Integer.MAX_VALUE; //important to work with min search
         }
         if(rightRowExists){
             rightIt = rCol.iterator();
-            rf = true;
-            rIndex = rightIt.next() - 1;
+            rightBuffer = 1; //set first bit
+            rIndex = rightIt.next() - 1; //actual index is left of first cell
             nextR = rightIt.hasNext() ? rightIt.next() : null;
         } else {
             rightIt = Collections.emptyIterator();
-            rIndex = Integer.MAX_VALUE;
+            rIndex = Integer.MAX_VALUE; //important to work with min search
         }
 
+        //start index selected from all
         int index = Integer.min(Integer.min(lIndex, cIndex), rIndex);
 
-        //sync
+        //main loop, exit when all rows have no cells
         while (leftRowExists || rightRowExists || centerRowExists ) {
-            int sum = 0;
-            boolean leap = true;
+            int neighbourCount = 0;
+            boolean leap = true; //if all rows effective position is above current, flag is set to skip unnecessary cells
 
             //left
             if (lIndex == index){
 
                 //count
-                if (lb){
-                    sum++;
-                }
-                if (lc){
-                    sum++;
-                }
-                if (lf){
-                    sum++;
-                }
+               switch (leftBuffer){
+                   case 0b111: //three bytes
+                       neighbourCount += 3;
+                       break;
+                   case 0b101: //any two bytes
+                   case 0b011:
+                   case 0b110:
+                       neighbourCount += 2;
+                       break;
+                   case 0b100: //any one byte
+                   case 0b010:
+                   case 0b001:
+                       neighbourCount += 1;
+                       break;
+                   default:
+                       break;
+               }
 
                 //step
                 lIndex++;
-                lb = lc;
-                lc = lf;
+                leftBuffer = (byte) ((leftBuffer << 1) & 0b111); //shift + clear excess
                 if (nextL != null){
 
-                    //leap
-                    if (!lb  && !lc){
+                    //check for leap
+                    if (leftBuffer == 0){
                         lIndex = nextL - 1;
                     } else {
                         leap = false;
                     }
-                    if(lIndex == nextL - 1){
-                        lf = true;
+
+                    //cycle next cell if it is next
+                    if (lIndex == (nextL - 1)){
+                        leftBuffer |= 1; //push first bit
                         nextL = leftIt.hasNext() ? leftIt.next() : null;
-                    } else {
-                        lf = false;
                     }
                 } else {
-                    leap = false;
-                    if(!lc && !lb){
+
+                    //disable row if no cells left
+                    if (leftBuffer == 0){
                         leftRowExists = false;
-                        lIndex = Integer.MAX_VALUE;
+                        lIndex = Integer.MAX_VALUE; //important to work with min search
                     } else {
-                        lf = false;
+                        leap = false;
                     }
+
                 }
             }
 
             //center
             if (cIndex == index){
+
                 //count
-                if (cb){
-                    sum++;
-                }
-                if (cc){
-                    sum++;
-                }
-                if (cf){
-                    sum++;
+                switch (centerBuffer){
+                    case 0b111: //three bits
+                        neighbourCount += 3;
+                        break;
+                    case 0b101: //any two bits
+                    case 0b011:
+                    case 0b110:
+                        neighbourCount += 2;
+                        break;
+                    case 0b100: //any one bit
+                    case 0b010:
+                    case 0b001:
+                        neighbourCount += 1;
+                        break;
+                    default:
+                        break;
                 }
 
                 //step
                 cIndex++;
-                cb = cc;
-                cc = cf;
+                centerBuffer = (byte) ((centerBuffer << 1) & 0b111); //shift + clear excess
                 if (nextC != null){
 
-                    //leap
-                    if (!cb && !cc){
+                    //check for leap
+                    if (centerBuffer == 0){
                         cIndex = nextC - 1;
                     } else {
                         leap = false;
                     }
-                    if(cIndex == nextC - 1){
-                        cf = true;
+
+                    //cycle next cell if it is next
+                    if (cIndex == (nextC - 1)){
+                        centerBuffer |= 1;  //push first bit
                         nextC = centerIt.hasNext() ? centerIt.next() : null;
-                    } else {
-                        cf = false;
                     }
                 } else {
-                    leap = false;
-                    if (!cc && !cb) {
+
+                    //disable row if no cells left
+                    if (centerBuffer == 0) {
                         centerRowExists = false;
-                        cIndex = Integer.MAX_VALUE;
+                        cIndex = Integer.MAX_VALUE; //important to work with min search
                     } else {
-                        cf = false;
+                        leap = false;
                     }
                 }
             }
 
             //right
             if (rIndex == index){
+
                 //count
-                if (rb){
-                    sum++;
-                }
-                if (rc){
-                    sum++;
-                }
-                if (rf){
-                    sum++;
+                switch (rightBuffer){
+                    case 0b111: //three bytes
+                        neighbourCount += 3;
+                        break;
+                    case 0b101: //any two bytes
+                    case 0b011:
+                    case 0b110:
+                        neighbourCount += 2;
+                        break;
+                    case 0b100: //any one byte
+                    case 0b010:
+                    case 0b001:
+                        neighbourCount += 1;
+                        break;
+                    default:
+                        break;
                 }
 
                 //step
                 rIndex++;
-                rb = rc;
-                rc = rf;
+                rightBuffer = (byte) ((rightBuffer << 1) & 0b111); //shift + clear excess
                 if (nextR != null){
 
-                    //leap
-                    if (!rb && !rc){
+                    //check for leap
+                    if (rightBuffer == 0){
                         rIndex = nextR - 1;
                     } else {
                         leap = false;
                     }
-                    if(rIndex == nextR - 1){
-                        rf = true;
+
+                    //cycle next cell if it is next
+                    if (rIndex == (nextR - 1)){
+                        rightBuffer |= 1; //push first bit
                         nextR = rightIt.hasNext() ? rightIt.next() : null;
-                    } else {
-                        rf = false;
                     }
                 } else {
-                    leap = false;
-                    if (!rc && !rb) {
+
+                    //disable row if no cells left
+                    if (rightBuffer == 0) {
                         rightRowExists = false;
                         rIndex = Integer.MAX_VALUE;
                     } else {
-                        rf = false;
+                        leap = false;
                     }
                 }
             }
 
-            //count, !!cc shifted to cb or just none like the cb!!
-            if (sum == 3 || (sum == 4 && cb)) {
+            //count, !!centre cell shifted to left centre cell or just none like left centre cell!!
+            if (neighbourCount == 3 || (neighbourCount == 4 && (centerBuffer >= 0b100))) {
                 newRow.add(index);
             }
 
@@ -339,18 +364,21 @@ public class LifeList extends AbstractLife {
         //just a bit unsafe if input file is broken...
         int xLen;
 
+        //setting actual coordinates
         x = offsetX + x;
         y = offsetY + zHeight() - y;
         xLen = x + lineCount;
 
-
-        if(currentLoadColumn == null || currentLoadColumn.index != y){
-            currentLoadColumn = new CellRow(y);
-            cellList.add(currentLoadColumn);
+        //If row index is different, saving new row
+        //!!If new row is duplicating, we are in trouble, but current methods are safe from this!!
+        if((currentLoadRow == null) || (currentLoadRow.index != y)){
+            currentLoadRow = new CellRow(y);
+            cellList.add(currentLoadRow);
         }
 
+        //adding all cells
         for (int i = x; i < xLen; i++) {
-            currentLoadColumn.add(i);
+            currentLoadRow.add(i);
         }
         unsorted = true;
     }
@@ -358,7 +386,7 @@ public class LifeList extends AbstractLife {
     @Override
     public void clear() {
         cellList.clear();
-        currentLoadColumn = null;
+        currentLoadRow = null;
     }
 
     @Override
