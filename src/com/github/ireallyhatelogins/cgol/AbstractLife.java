@@ -196,15 +196,13 @@ public abstract class AbstractLife {
      * Clears all alive cells,
      * Should be overridden
      */
-    public void clear() {
-    }
+    public abstract void clear();
 
     /**
      * Method to calculate next generation
      * Should be overridden
      */
-    protected void next() {
-    }
+    protected abstract void next();
 
     /**
      * Method to draw current state
@@ -213,8 +211,7 @@ public abstract class AbstractLife {
      *  to draw, current canvas scope can be obtained
      *  from offsets and zHeight/zWidth
      */
-    protected void draw() {
-    }
+    protected abstract void draw();
 
     /**
      * Used in load method,
@@ -223,8 +220,7 @@ public abstract class AbstractLife {
      * @param y - start y coordinate
      * @param lineCount - amount of cells to add, from x to x + lineCount
      */
-    protected void add(int x, int y, int lineCount) {
-    }
+    protected abstract void add(int x, int y, int lineCount);
 
     /**
      * Set zoom limits to not zoom out more than height and width
