@@ -9,14 +9,14 @@ import java.util.Random;
 
 public class LifeList extends AbstractLife {
 
-    private ArrayList<CellRow> cellList = new ArrayList<>();
-    private ArrayList<CellRow> previousCellList = cellList;     //not local for drawing
-    private boolean unsorted = true;                            //indicates if current cell list might be unordered
-    private CellRow currentLoadRow = null;                      //stores last used row while generating field to speed up the process
-    
+    protected ArrayList<CellRow> cellList = new ArrayList<>();
+    protected ArrayList<CellRow> previousCellList = cellList;     //not local for drawing
+    protected boolean unsorted = true;                            //indicates if current cell list might be unordered
+    protected CellRow currentLoadRow = null;                      //stores last used row while generating field to speed up the process
 
-    private class CellRow extends ArrayList<Integer> implements Comparable<CellRow>{
-        private int index;
+
+    protected class CellRow extends ArrayList<Integer> implements Comparable<CellRow>{
+        protected int index;
 
         CellRow(int index){
             super();
@@ -406,7 +406,7 @@ public class LifeList extends AbstractLife {
 
     }
 
-    private void sortLists(){
+    protected void sortLists(){
         cellList.removeIf(e -> {
             if(e.isEmpty()){
                 return true;
