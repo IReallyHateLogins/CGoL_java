@@ -8,6 +8,8 @@ import java.util.concurrent.*;
 
 public class ParallelLifeListPrimitive extends LifeListPrimitive {
 
+    private ExecutorService service = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
+
     protected class ParallelRowProcessor implements Callable<CellRow> {
         Integer rowIndex;
         CellRow lRow;
@@ -276,7 +278,6 @@ public class ParallelLifeListPrimitive extends LifeListPrimitive {
         cellList = new ArrayList<>();
 
         Iterator<CellRow> curIt = previousCellList.iterator();
-        ExecutorService service = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
 
         //setup
         CellRow lRow = null;                                        //left row
@@ -318,7 +319,6 @@ public class ParallelLifeListPrimitive extends LifeListPrimitive {
             }
         }
 
-        service.shutdown();
         futureList.forEach(e -> {
             try {
                 CellRow row = e.get();
@@ -331,8 +331,5 @@ public class ParallelLifeListPrimitive extends LifeListPrimitive {
                 e1.printStackTrace();
             }
         });
-        while (!service.isTerminated()){
-            //!!await, no timer yet, might add later with awaitTermination!!
-        }
     }
 }
